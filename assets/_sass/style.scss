@@ -210,7 +210,7 @@ a {
   overflow: hidden;
   display: block;
   &:hover {
-    -webkit-animation: spin .35s linear infinite;
+    -webkit-animation: spin 5s linear infinite;
     -moz-animation: spin 5s linear infinite;
     -ms-animation: spin 5s linear infinite;
     -o-animation: spin 5s linear infinite;
