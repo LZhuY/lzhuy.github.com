@@ -12,11 +12,11 @@ if ($(window).width() <= 1280) {
 
 // Variables
     tag1       = $('.pl__all'),
-    tag2       = $('.数据结构'),
-    tag3       = $('.算法'),
-    tag4       = $('.计算机原理'),
-    tag5       = $('.网络编程'),
-    tag6       = $('.分布式');
+    tag2       = $('.data_structure'),
+    tag3       = $('.algorithm'),
+    tag4       = $('.computer_principles'),
+    tag5       = $('.network'),
+    tag6       = $('.distributed_system');
 var sidebar    = $('#sidebar'),
     container  = $('#post'),
     content    = $('#pjax'),
