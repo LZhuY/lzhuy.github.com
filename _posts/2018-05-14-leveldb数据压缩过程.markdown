@@ -10,3 +10,43 @@ DBImpl::BackgroundCompaction是压缩过程的主要接口。在这个接口中�
 1、把imem中的KEY/VAl对dump到level0中的sstable文件中。
 2、合并sstable文件。
 
+{% highlight ruby %}
+
+void DBImpl::BackgroundCompaction() {///后台压缩操作
+  if (imm_ != nullptr) { 
+    CompactMemTable();//将imm_写到level 0,就是一个sstable中。
+    return;
+  }
+  CompactionState* compact = new CompactionState(c);
+  status = DoCompactionWork(compact); ///合并多个sstable
+  }
+{% endhighlight %}
+
+{% highlight ruby %}
+class MemTable{
+	void Add(SequenceNumber s, ValueType type, const Slice& key, const Slice& value){ //添加接口，向arena申请空间，
+																					  //把KEY，VAl，TYPE，seq解析到空间，然后insert到跳表中。
+		char* buf = arena_.Allocate(encoded_len); /// arena先申请了大块内存，这里返回一小块，相当于保存到arena中了。
+		char* p = EncodeVarint32(buf, internal_key_size);
+		memcpy(p, key.data(), key_size);
+		p += key_size;
+		EncodeFixed64(p, (s << 8) | type);
+		p += 8;
+		p = EncodeVarint32(p, val_size);
+		memcpy(p, value.data(), val_size);
+		assert(p + val_size == buf + encoded_len);
+		table_.Insert(buf); /// buff指针加入到table中了， table is a SkipList。
+	}
+
+	bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) ///从跳表中查找。
+}
+
+class TableBuilder{
+	
+}
+
+{% endhighlight %}
+
+![image02](/assets/img/avatar.png)
+![image03](/assets/img/avatar.png)
+<img src="{{site.url}}/imgs/sstable_format.png">
