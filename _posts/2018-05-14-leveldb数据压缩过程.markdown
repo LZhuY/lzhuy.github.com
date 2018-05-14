@@ -46,7 +46,4 @@ class TableBuilder{
 }
 
 {% endhighlight %}
-
-![image02](/assets/img/avatar.png)
-![image03](/assets/img/avatar.png)
-<img src="{{site.url}}/imgs/sstable_format.png">
+![image02](/assets/img/sstable_format.png)
