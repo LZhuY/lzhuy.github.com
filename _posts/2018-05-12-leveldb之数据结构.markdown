@@ -1,0 +1,16 @@
+---
+layout: post
+title:  "leveldb之数据合并"
+date:   2018-05-12 15:08:00
+categories: data_structure
+tags: data_structure
+---
+
+leveldb数据存储结构和合并过程。
+
+1、数据存储结构
+分成多个level进行存储，按KEY的顺序进行存储。每个level有多个memtable,一个memtable对应一个sstable。除level0外，每个level内的SSTable之间不会有key的重叠。
+第一种compcation只是简单的吧imemtable dump到level0的sstable中。第二种就比较复杂，涉及到多层level跟多个sstable的合并。每个sstable中有最小KEY跟最大KEY按
+顺序排列，上一层的level中的sstable可能MinKey跟MaxKey在下一层中会夸了几个sstable。同时一个KEY可能在不同的level的sstable中存在，这时合并的时候就可能涉及到
+多层level跟多个sstable的合并。比如level1中的sstable2的MinKey跟MaxKEY的跨度是level2中sstable4到sstable8的跨度，那合并的时候可能就得把level1中的sstable2分散到level2中的sstable4到sstable8中去。
+
