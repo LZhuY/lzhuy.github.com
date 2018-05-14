@@ -1,0 +1,12 @@
+---
+layout: post
+title:  "leveldb之数据压缩"
+date:   2018-05-14 11:26:00
+categories: data_structure
+tags: data_structure
+---
+
+DBImpl::BackgroundCompaction是压缩过程的主要接口。在这个接口中主要完成两步重要的工作。
+1、把imem中的KEY/VAl对dump到level0中的sstable文件中。
+2、合并sstable文件。
+

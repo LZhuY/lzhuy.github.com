@@ -323,6 +323,12 @@ a {
   }
 }
 
+#icon-github {
+  border-right: 1px solid darken($tags-bg, 5%);
+  &:before {
+    content: "\e800";
+  }
+}
 
 /*---------------------------------*\
    Posts List
@@ -759,6 +765,16 @@ iframe {
   }
 }
 #icon-weibo {
+  margin-left: 50px;
+  &:hover {
+    color: #d40220;
+  }
+  &:before {
+    content: "\e804";
+  }
+}
+
+#icon-github {
   margin-left: 50px;
   &:hover {
     color: #d40220;
