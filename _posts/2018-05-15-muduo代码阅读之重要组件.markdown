@@ -11,7 +11,7 @@ tags: codereader
 前段时间写了套服务端框架，采用reaction模式处理，实现分布式机制。不过总感觉不够精炼、简洁。这个看moduo库希望可以从中学到些东西。
 首先从几个重要的组件开始。
 
-1、EventLoop组件，这个应该是moduo库最核心的库。是一个reaction模式的实现。封装了epoll等底层的多路复用IO。
+1、EventLoop组件，这个应该是moduo库最核心的组件，是一个reaction模式的实现。poller_成员封装了epoll等底层的多路复用IO。
 
 {% highlight ruby %}
 	class EventLoop : boost::noncopyable
@@ -19,7 +19,12 @@ tags: codereader
 		public:
 		void loop(); ///主循环接口，直到退出。 
 		{
-			pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);// 1、处理活跃的channel
+			pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);// 1、获取活跃的channel列表
+			for (ChannelList::iterator it = activeChannels_.begin(); it != activeChannels_.end(); ++it)
+			{   //遍历活跃列表activeChannels_,调对应的handleEvent接口处理信息。
+				currentActiveChannel_ = *it;
+				currentActiveChannel_->handleEvent(pollReturnTime_);
+			}
 			doPendingFunctors(); // 2、处理需要马上触发的CB，runInLoop等接口丢进来的回调，定时器也一样在这里处理。
 		}
 		void runInLoop(const Functor& cb); ///可以丢一个CB进来到loop线程跑。
@@ -40,7 +45,7 @@ tags: codereader
 		{ closeCallback_ = cb; }
 		void setErrorCallback(const EventCallback& cb)
 		{ errorCallback_ = cb; }
-		void enableReading() { events_ |= kReadEvent; update(); } //把自己的fd注册到poller中，poller有map<fd,channel>, 根据fd找到活跃channel列表。
+		void enableReading() { events_ |= kReadEvent; update(); } //注册到poller中，poller有map<fd,channel>, 根据fd找到活跃channel列表。
 		private:
 		void set_revents(int revt) { revents_ = revt; } // used by pollers,poller返回活跃的channel列表是，设置事件类型标志到这里。
 	}
@@ -128,7 +133,9 @@ tags: codereader
 			conn->setWriteCompleteCallback(writeCompleteCallback_);
 			conn->setCloseCallback(
 			  boost::bind(&TcpServer::removeConnection, this, _1)); // FIXME: unsafe
-			ioLoop->runInLoop(boost::bind(&TcpConnection::connectEstablished, conn)); //TcpConnection::connectEstablished注册到poller中。
+
+			//TcpConnection::connectEstablished注册到poller中。
+			ioLoop->runInLoop(boost::bind(&TcpConnection::connectEstablished, conn)); 
 		}
 
 		void TcpServer::start()//server开始工作了
