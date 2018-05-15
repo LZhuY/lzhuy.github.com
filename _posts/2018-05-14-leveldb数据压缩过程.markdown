@@ -40,7 +40,7 @@ class MemTable{
 
 	bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) ///从跳表中查找。
 
-	///注意这部分，设计到表中数据的排列顺序，memtable的keycompareator接口
+	///注意这部分，设计到表中数据的排列顺序，`memtable`的keycompareator接口
 	///理解这部分后，理解在DBImpl::DoCompactionWork接口中遍历NewMergingIterator实现多余信息删除就容易了。
 	MemTable::MemTable(const InternalKeyComparator& cmp): comparator_(cmp), refs_(0),table_(comparator_, &arena_){
 	}
@@ -73,7 +73,7 @@ class MemTable{
 	Status DBImpl::DoCompactionWork(CompactionState* compact) { ///合并数据接口
 		Iterator* input = versions_->MakeInputIterator(compact->compaction);
 		for (; input->Valid() && !shutting_down_.Acquire_Load(); ) {
-			///input iterator已经封装好多个sstable, 每次能拿到KEY最小的出来。
+			///input iterator已经封装好多个`sstable`, 每次能拿到KEY最小的出来。
 			///这样在处理第一个处理的KEY时直接写入合并文件，否则删除。因为第一个出现的
 			///KEY的seq是相同strkey中seq最大的。
 		}
