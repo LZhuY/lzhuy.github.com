@@ -39,11 +39,46 @@ class MemTable{
 	}
 
 	bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) ///从跳表中查找。
-}
 
-class TableBuilder{
-	
+	///注意这部分，设计到表中数据的排列顺序，memtable的keycompareator接口
+	///理解这部分后，理解在DBImpl::DoCompactionWork接口中遍历NewMergingIterator实现多余信息删除就容易了。
+	MemTable::MemTable(const InternalKeyComparator& cmp): comparator_(cmp), refs_(0),table_(comparator_, &arena_){
+	}
+	int MemTable::KeyComparator::operator()(const char* aptr, const char* bptr)
+    const {
+		// Internal keys are encoded as length-prefixed strings.
+		Slice a = GetLengthPrefixedSlice(aptr);
+		Slice b = GetLengthPrefixedSlice(bptr);
+		return comparator.Compare(a, b);
+	}
+	int InternalKeyComparator::Compare(const Slice& akey, const Slice& bkey) const {
+		// Order by:
+		//    increasing user key (according to user-supplied comparator)
+		//    decreasing sequence number
+		//    decreasing type (though sequence# should be enough to disambiguate)
+		int r = user_comparator_->Compare(ExtractUserKey(akey), ExtractUserKey(bkey));
+		if (r == 0) {
+			const uint64_t anum = DecodeFixed64(akey.data() + akey.size() - 8);
+			const uint64_t bnum = DecodeFixed64(bkey.data() + bkey.size() - 8);
+			if (anum > bnum) {
+				r = -1;
+			} else if (anum < bnum) {
+				r = +1;
+			}
+		}
+			return r;
+	}
+
+
+	Status DBImpl::DoCompactionWork(CompactionState* compact) { ///合并数据接口
+		Iterator* input = versions_->MakeInputIterator(compact->compaction);
+		for (; input->Valid() && !shutting_down_.Acquire_Load(); ) {
+			///input iterator已经封装好多个sstable, 每次能拿到KEY最小的出来。
+			///这样在处理第一个处理的KEY时直接写入合并文件，否则删除。因为第一个出现的
+			///KEY的seq是相同strkey中seq最大的。
+		}
+	}
 }
 
 {% endhighlight %}
-![image02](/assets/img/leveldb/sstable_format.png)
+<!-- [image02](/assets/img/leveldb/sstable_format.png) -->
