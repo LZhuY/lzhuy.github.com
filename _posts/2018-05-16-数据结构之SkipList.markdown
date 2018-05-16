@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "跳表"
+title:  "SkipList"
 date:   2018-05-16 22:21:49
 categories: data_structure
 tags: data_structure
