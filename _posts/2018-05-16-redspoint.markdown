@@ -2,8 +2,8 @@
 layout: post
 title:  "基于B+树实现的小红点"
 date:   2018-05-16 22:21:49
-categories: codereader
-tags: codereader
+categories: data_structure
+tags: data_structure
 ---
 
 基于B+树实现的小红点，觉得是个不错的思路，具体代码如下。
