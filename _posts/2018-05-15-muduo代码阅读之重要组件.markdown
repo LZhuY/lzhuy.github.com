@@ -51,7 +51,34 @@ tags: codereader
 	}
 {% endhighlight %}
 
-3、Accept组件，用于监听端口并处理连接。对channel、loop、Socket几个组件的整合。
+3、TcpConnection组件，代表一个tcp连接,tcpserver那边有连接池。
+{% highlight ruby %}
+
+	class TcpConnection {
+		void TcpConnection::sendInLoop(const void* data, size_t len){//发送数据接口，现在
+			if (not thing no buff) //两种写模式，缓存没数据之间向socket中写
+				nwrote = sockets::write(channel_->fd(), data, len);
+			else //缓存有数据可能有阻塞，先利用channel注册写事件到poll，然后再回调回来。
+				channel_->enableWriting();
+		}
+
+		TcpConnection::handleRead(Timestamp receiveTime){//channel那边回调回来的read接口
+			ssize_t n = inputBuffer_.readFd(channel_->fd(), &savedErrno); //直接从sock读到缓存中
+			messageCallback_(shared_from_this(), &inputBuffer_, receiveTime); //调信息处理接口处理，其实是server的，newconnect接口中设置的。
+		}
+
+		void handleRead(Timestamp receiveTime); //有读写接口，通过connect的服装。读写现在缓存在两个in/out buff中
+  		void handleWrite();
+
+		boost::scoped_ptr<Channel> channel_; //也持有channel之子
+		Buffer inputBuffer_; //有读写池
+		Buffer outputBuffer_; // FIXME: use list<Buffer> as output buffer.
+		boost::any context_; //这个content用于不同类型的字符流解析等，比如HTTPcontent用于解析HTTPrequest
+	}
+
+{% endhighlight %}
+
+4、Accept组件，用于监听端口并处理连接。对channel、loop、Socket几个组件的整合。
 {% highlight ruby %}
 	Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport)
 	  : loop_(loop),
@@ -87,7 +114,7 @@ tags: codereader
 {% endhighlight %}
 
 
-4、TcpServer组件，这个是个更高层的封装组件。
+5、TcpServer组件，这个是个更高层的封装组件。
 {% highlight ruby %}
 	class TcpServer : boost::noncopyable
 	{
@@ -151,7 +178,7 @@ tags: codereader
 	}
 {% endhighlight %}
 
-5、一个简单的使用例子
+6、一个简单的使用例子
 
 {% highlight ruby %}
 
