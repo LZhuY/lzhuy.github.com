@@ -20,7 +20,7 @@ tags: data_structure
 const int MAX_LEVEL = 10;
 
 int randHight(){
-	srand(time(NULL));
+	//srand(time(NULL));
 	int hight = rand()%MAX_LEVEL;
 	return hight;
 }
@@ -75,12 +75,14 @@ typename SkipList<Key, Compare>::Node* SkipList<Key, Compare>::findGreaterOrEqul
 	Node* x = head_;
 	int level = MAX_LEVEL;
 	while(1){
-		while( comp_(x->next_(level)->key_, key) < 0)
-			x = x->next(level);
-		n[level] = x;
-		if(level == 0)
-			return NULL;
-		level -= 1;
+		Node* tmp = x->next(level);
+		if(tmp != NULL && comp_(key, tmp->key_) > 0)
+			x = tmp->next(level);
+		else{
+			n[level] = x;
+			if(level == 0) return NULL;
+			level --;
+		}
 	}
 }
 

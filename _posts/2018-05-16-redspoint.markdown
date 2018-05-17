@@ -6,7 +6,7 @@ categories: codereader
 tags: codereader
 ---
 
-今天看了下项目小红点的实现，发现是用了类似B+树的一个结构实现的，觉得是个不错的思路，具体代码如下。
+基于B+树实现的小红点，觉得是个不错的思路，具体代码如下。
 
 {% highlight ruby %}
 
