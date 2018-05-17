@@ -178,7 +178,53 @@ tags: codereader
 	}
 {% endhighlight %}
 
-6、一个简单的使用例子
+
+6、EventLoopThreadPool 线程池。可以线程级别的负载均衡，返回对应的线程对应的loop,上层确定把事件放在哪个loop中跑。
+
+{% highlight ruby %}
+	void EventLoopThreadPool::start(const ThreadInitCallback& cb) //开启多个线程，每个线程一个loop,每个线程主循环loop.loop()
+	{
+		assert(!started_);
+		baseLoop_->assertInLoopThread();
+
+		started_ = true;
+
+		for (int i = 0; i < numThreads_; ++i)
+		{
+		char buf[name_.size() + 32];
+		snprintf(buf, sizeof buf, "%s%d", name_.c_str(), i);
+		EventLoopThread* t = new EventLoopThread(cb, buf);
+		threads_.push_back(t);
+		loops_.push_back(t->startLoop());
+		}
+		if (numThreads_ == 0 && cb)
+		{
+		cb(baseLoop_);
+		}
+	}
+
+	EventLoop* EventLoopThreadPool::getNextLoop()//返回一个loop,上层把事件注册到这个loop中。
+	{
+		baseLoop_->assertInLoopThread();
+		assert(started_);
+		EventLoop* loop = baseLoop_;
+
+		if (!loops_.empty())
+		{
+		// round-robin
+		loop = loops_[next_];
+		++next_;
+		if (implicit_cast<size_t>(next_) >= loops_.size())
+		{
+		  next_ = 0;
+		}
+		}
+		return loop;
+	}
+
+{% endhighlight %}
+
+7、一个简单的使用例子
 
 {% highlight ruby %}
 
@@ -225,6 +271,6 @@ tags: codereader
 {% endhighlight %}
 
 
-6、总结
+8、总结
 moduo整体框架设计非常简洁，各个模块分工明确。并且模块都有设置回调函数的接口，供给外界组成回调函数。
 就像是提供了插座，使用者用不同功能的插头插入就可以实现不同需求，非常的灵活方便。各个模块间的解耦设计的非常好。
