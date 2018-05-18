@@ -75,8 +75,8 @@ Proposer p1 在向 acceptor 提出关于 X 的第 n 号议案前，都会先向�
 Learner 收到了某个 acceptor 的 accept 信息后，会统计一共收到了多少个 acceptor 发过来的该 proposal 的 accept 信息，若该 proposal 的 acceptor 数量达到了 quorum, 那么就认定该 proposal 对应的值为 X 的值。
 
 4、附上lampport大神的<<paxos simple>>全文
-{% highlight ruby %}
-Paxos Made Simple
+
+								Paxos Made Simple
 Leslie Lamport
 01 Nov 2001
 Abstract
@@ -91,7 +91,9 @@ Contents
 2.5 The Implementation . . . . . . . . . . . . . . . . . . . . . . . 7
 3 Implementing a State Machine 8
 References 11
+
 1 Introduction
+
 The Paxos algorithm for implementing a fault-tolerant distributed system
 has been regarded as difficult to understand, perhaps because the original
 presentation was Greek to many readers [5]. In fact, it is among the simplest
@@ -104,7 +106,9 @@ approach for building a distributed system—an approach that should
 be well-known, since it is the subject of what is probably the most often-cited
 article on the theory of distributed systems [4].
 2 The Consensus Algorithm
+
 2.1 The Problem
+
 Assume a collection of processes that can propose values. A consensus algorithm
 ensures that a single one among the proposed values is chosen. If
 no value is proposed, then no value should be chosen. If a value has been
@@ -493,7 +497,5 @@ systems. Computer Networks, 2:95–114, 1978.
 [4] Leslie Lamport. Time, clocks, and the ordering of events in a distributed
 system. Communications of the ACM, 21(7):558–565, July 1978.
 [5] Leslie Lamport. The part-time parliament. ACM Transactions on Computer
-Systems, 16(2):133–169, May 1998.
-11
+Systems, 16(2):133–169, May 1998.11
 
-{% endhighlight %}
