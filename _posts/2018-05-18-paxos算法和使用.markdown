@@ -10,7 +10,7 @@ tags: distributed_system
 paxos一致性算法大家都听说过，可是很少人知道paxos能用来干嘛。其实简单来讲paxos就是用来确定一个值的。
 比如有3台机，每台机上都记录了同一个变量A的值。paxos就是能确定A的值，让3台机上记录的A的值一样。
 
-[image02](/assets/img/paxos/640_1.webp)
+[image01](/assets/img/paxos/640_1.webp)
 
 很多人就觉得确定一个值有什么用，其实只是确定一个值确实没啥实际意义。但是如果能连续的确定多个值，那
 就非常有意义了。大家想连接确定了多个值，然后把这些连续的值当成状态机的输入，那么这些状态机最终的状态
@@ -29,13 +29,14 @@ paxos一致性算法大家都听说过，可是很少人知道paxos能用来干�
 基于这三个约束，每台机器的多个实例都是一个连续递增编号的有序系列，而基于paxos的保证，同一个编号的实例，确定的
 值都是一致的，那么三台机都获得了一个有序的多个值。
 
-[image02](/assets/img/paxos/640_3.webp)
+[image03](/assets/img/paxos/640_3.webp)
 
 如上图所示，一个instance确定一个值后就会销毁。上图表示三台机A、B、C中的instance情况，红色表示已经销毁的instance。
 白色是正在运行的instance，从图中可以看到其实最大编号的instance是A的6。而其他的机子instance编号都落后，说明这些机
 子确定的值不会被承认。因为他们提示的实例已经完成的任务销毁了，不会再次修改已经确定的值。
 
 那如何同步跟更新这些不同机子的instance编号呢。可以通过另一个组件learner来完成。learner进程负责同步已经销毁的instance
-确定好的值，和最新的instance编号。
+确定好的值，和最新的instance编号。发现某个编号的instance已经确定好值后，直接同步到本地就好了。这样确定多个值后使用
+的空间就非常大了。
 
-[image02](/assets/img/paxos/640_4.webp)
+[image04](/assets/img/paxos/640_4.webp)

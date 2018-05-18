@@ -81,4 +81,5 @@ class MemTable{
 }
 
 {% endhighlight %}
+
 [image02](/assets/img/leveldb/sstable_format.png)
