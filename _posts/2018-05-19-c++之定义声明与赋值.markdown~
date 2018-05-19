@@ -1,0 +1,38 @@
+---
+layout: post
+title:  "c++ define&declaration&init"
+date:   2018-05-18 22:21:49
+categories: cplusplus
+tags: cplusplush
+---
+
+最近打算重新复习下c++的基础知识。所以重新看了《c++print》。这里开一个BLOG文章类型记录下。
+
+1、声明
+声明是说明了一个变量的类型和名字，不分配内存也不初始化变量的值。声明包括三个部分。 extern 变量类型 变量名;
+例如： extern int i; extern double d;
+如果有赋值操作，那么就算有extern关键字也算是定义。声明一个变量后可以在不同的文件中使用同一个变量。如文件A中定义了
+变量i，则在文件B中声明后可以使用i;
+
+2、定义
+没有关键字extern，说明了变量的类型和变量名，会给变量分配内存空间。当然会根据变量定义的位置分配的空间位置不一样，
+如有些全局变量的内存分配在堆中，有些函数中定义的临时变量则分配在栈中。如果不赋值则会可能会默认初始化。
+
+3、初始化
+上面说定义变量后可能会初始化，意思是有些情况下并不会初始化，只是分配了空间而已。比如定义了全局变量可能会初始化，有一个
+初始的值。但是在函数中定义的临时变量是不是初始化的。也就是说函数中定义的变量如果不手动赋值可能就可能是一个随机的值；
+
+{% highlight ruby %}
+
+#include <iostream>
+int global_i; //全局变量定义后会初始化为0
+void fun(){
+	int f_local_i; //函数里面定义的临时变量不会初始化，是一个随机的值；
+	std::cout<<f_local_i<<std::endl;
+}
+int main(){
+	int m_global_i;//初始化为0;
+	std::cout<<global_i<<m_global_i<<std::endl;
+}
+
+{% endhighlight %}
