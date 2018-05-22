@@ -1,0 +1,153 @@
+---
+layout: post
+title:  "phxpaxos源码阅读之一"
+date:   2018-05-18 22:21:49
+categories: codereader
+tags: codereader
+---
+
+src/algorithm目录下放着paxos算法的实现，主要有三个主要的类，acceptor、learner、proposer。
+先看下这几个类的实现。
+
+1、proposer
+{% highlight ruby %}
+	class Proposer : public Base
+	{
+	public:
+	    void SetStartProposalID(const uint64_t llProposalID); //提议号
+	    int NewValue(const std::string & sValue); //提议内容
+
+	    /////////////////////////////
+	    void Prepare(const bool bNeedNewBallot = true); //封装提议消息，广播出去发起一个提议。
+	    void OnPrepareReply(const PaxosMsg & oPaxosMsg); //收到提议的回应
+
+	    void Accept(); //提议收到大部分accept接受，这进入提议内容阶段。
+	    void OnAcceptReply(const PaxosMsg & oPaxosMsg);//提议内容反馈
+	    {
+			m_oMsgCounter.AddReceive(oPaxosMsg.nodeid());  //记录状态机
+			if (m_oMsgCounter.IsPassedOnThisRound()) //accept阶段是否通过了。
+		    {
+		        int iUseTimeMs = m_oTimeStat.Point();
+		        BP->GetProposerBP()->AcceptPass(iUseTimeMs);
+		        PLGImp("[Pass] Start send learn, usetime %dms", iUseTimeMs);
+		        ExitAccept();
+		        m_poLearner->ProposerSendSuccess(GetInstanceID(), m_oProposerState.GetProposalID());//提议通过后就通知learner记录通过的提议内容
+		    }
+	    }
+	    /////////////////////////////
+	public:
+	    ProposerState m_oProposerState; //proposer状态机
+	    MsgCounter m_oMsgCounter; //这里有意思，是用于统计这轮提案的反馈情况。统计收到多少acceptor的通过等。
+	    Learner * m_poLearner;
+	};
+{% endhighlight %}
+
+2、acceptor
+
+{% highlight ruby %}
+	class Acceptor : public Base //非常简单的类，只有两个接口，处理prepare和处理accept
+	{
+	public:
+	    int OnPrepare(const PaxosMsg & oPaxosMsg);
+	    void OnAccept(const PaxosMsg & oPaxosMsg);
+	//private:
+	    AcceptorState m_oAcceptorState;
+	};
+{% endhighlight %}
+
+3、learner
+在proposer的OnAcceptReply接口中，如果提议通过了，则m_poLearner->ProposerSendSuccess通过这个接口通知learner同步通过的议案内容。
+这个接口怎么处理这个议案内容呢。
+
+{% highlight ruby %}
+
+	void Learner :: ProposerSendSuccess(const uint64_t llLearnInstanceID, const uint64_t llProposalID)
+	{
+	    BP->GetLearnerBP()->ProposerSendSuccess();
+	    PaxosMsg oPaxosMsg;
+	    oPaxosMsg.set_msgtype(MsgType_PaxosLearner_ProposerSendSuccess);
+	    oPaxosMsg.set_instanceid(llLearnInstanceID);
+	    oPaxosMsg.set_nodeid(m_poConfig->GetMyNodeID());
+	    oPaxosMsg.set_proposalid(llProposalID);
+	    oPaxosMsg.set_lastchecksum(GetLastChecksum());
+	    //run self first
+	    BroadcastMessage(oPaxosMsg, BroadcastMessage_Type_RunSelf_First);//服装好消息广播出去
+	}
+
+	int Instance :: ReceiveMsgForLearner(const PaxosMsg & oPaxosMsg) //信息处理接口，learner发出的消息到instance处理消息接口中
+	{
+	    if (oPaxosMsg.msgtype() == MsgType_PaxosLearner_AskforLearn)
+	    {
+	        m_oLearner.OnAskforLearn(oPaxosMsg);
+	    }
+	    else if (oPaxosMsg.msgtype() == MsgType_PaxosLearner_SendLearnValue)
+	    {
+	        m_oLearner.OnSendLearnValue(oPaxosMsg);
+	    }
+	    else if (oPaxosMsg.msgtype() == MsgType_PaxosLearner_ProposerSendSuccess)
+	    {
+	        m_oLearner.OnProposerSendSuccess(oPaxosMsg);//有提议被接受了，这里处理被接受的提议内容。
+	    }
+
+
+		if (m_oLearner.IsLearned()) //已经学习的标志
+	    {
+	        BP->GetInstanceBP()->OnInstanceLearned();
+
+	        SMCtx * poSMCtx = nullptr;
+	        bool bIsMyCommit = m_oCommitCtx.IsMyCommit(m_oLearner.GetInstanceID(), m_oLearner.GetLearnValue(), poSMCtx);
+
+	        if (!bIsMyCommit)
+	        {
+	            BP->GetInstanceBP()->OnInstanceLearnedNotMyCommit();
+	            PLGDebug("this value is not my commit");
+	        }
+	        else
+	        {
+	            int iUseTimeMs = m_oTimeStat.Point();
+	            BP->GetInstanceBP()->OnInstanceLearnedIsMyCommit(iUseTimeMs);
+	            PLGHead("My commit ok, usetime %dms", iUseTimeMs);
+	        }
+
+	        if (!SMExecute(m_oLearner.GetInstanceID(), m_oLearner.GetLearnValue(), bIsMyCommit, poSMCtx)) //完成的提议交给状态机处理
+	        {
+	            BP->GetInstanceBP()->OnInstanceLearnedSMExecuteFail();
+
+	            PLGErr("SMExecute fail, instanceid %lu, not increase instanceid", m_oLearner.GetInstanceID());
+	            m_oCommitCtx.SetResult(PaxosTryCommitRet_ExecuteFail, 
+	                    m_oLearner.GetInstanceID(), m_oLearner.GetLearnValue());
+
+	            m_oProposer.CancelSkipPrepare();
+
+	            return -1;
+	        }
+	    }
+	}
+
+{% endhighlight %}
+
+4、状态机处理已经通过的议案
+
+{% highlight ruby %}
+	int Instance :: ReceiveMsgForLearner(const PaxosMsg & oPaxosMsg) 接口中调了SMExecute接口，就是交给状态机处理了。
+
+	bool Instance :: SMExecute(
+        const uint64_t llInstanceID, 
+        const std::string & sValue, 
+        const bool bIsMyCommit,
+        SMCtx * poSMCtx)
+	{
+	    return m_oSMFac.Execute(m_poConfig->GetMyGroupIdx(), llInstanceID, sValue, poSMCtx);
+	}
+
+	class PhxEchoSM : public phxpaxos::StateMachine //状态机需要继承StateMachine，并实现Execute接口。
+	{ 
+	public:
+	    PhxEchoSM();
+
+	    bool Execute(const int iGroupIdx, const uint64_t llInstanceID, 
+	            const std::string & sPaxosValue, phxpaxos::SMCtx * poSMCtx);
+
+	    const int SMID() const { return 1; }
+	};
+{% endhighlight %}
