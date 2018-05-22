@@ -61,6 +61,8 @@ src/algorithm目录下放着paxos算法的实现，主要有三个主要的类�
 
 {% highlight ruby %}
 
+	void Learner :: OnAskforLearn(const PaxosMsg & oPaxosMsg)//如果本节点落后其他节点，就发起学习。
+
 	void Learner :: ProposerSendSuccess(const uint64_t llLearnInstanceID, const uint64_t llProposalID)
 	{
 	    BP->GetLearnerBP()->ProposerSendSuccess();
@@ -90,7 +92,8 @@ src/algorithm目录下放着paxos算法的实现，主要有三个主要的类�
 	    }
 
 
-		if (m_oLearner.IsLearned()) //已经学习的标志
+		if (m_oLearner.IsLearned()) //已经学习的标志，这里只处理本节点参与接受提议的情况。不参与接受提议的情况从别的节点学习。因为只有一个
+		//leader proposer节点提议，所以一般都是一样的。
 	    {
 	        BP->GetInstanceBP()->OnInstanceLearned();
 
