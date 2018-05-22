@@ -154,3 +154,7 @@ src/algorithm目录下放着paxos算法的实现，主要有三个主要的类�
 	    const int SMID() const { return 1; }
 	};
 {% endhighlight %}
+
+最后看下phxpaxos的整体结构图。
+
+[image01](/assets/img/paxos/phxpaxos_constrution.png)
