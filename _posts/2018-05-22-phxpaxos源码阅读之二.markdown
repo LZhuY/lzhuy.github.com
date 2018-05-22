@@ -1,0 +1,15 @@
+---
+layout: post
+title:  "phxpaxos源码阅读之二"
+date:   2018-05-22 22:21:49
+categories: codereader
+tags: codereader
+---
+
+状态机和主节点选举
+
+1、master
+用于选举主节点等。
+
+2、SystemVSM
+用于管理各个节点，添加新节点等。
