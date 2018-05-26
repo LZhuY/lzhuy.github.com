@@ -1,0 +1,165 @@
+---
+layout: post
+title:  "c++ 右值引用和std::move"
+date:   2018-05-18 22:21:49
+categories: cplusplus
+tags: cplusplush
+---
+
+c++11中加了一个新概念，叫右值引用。所谓的左右值大家都知道，简单说就是在 = 号的左边的是左值， 只能在右边的是右值。
+左值引用定义是 Type& lref = xx; 右值引用是 Type&& rref = xx;
+比如
+{% highlight ruby %}
+
+	int i = 10; //i是左值，10是右值，10不能在=号左边吧。 
+	int j = i; //i可以在左边也可以在右边，是左值
+	int& r = i;
+
+{% endhighlight %}
+
+那右值引用有什么用呢，主要是用来夺取一些即将要被销毁的对象的有意义的值。
+想一想如果有一个Obj持有一个指针 ptr，这个指针指向一个大块内存，这时候如果想要
+复制这个Obj就得要用深度复制。深度复制消耗性能。所以其实只需要复制指针就好了。
+这时就有人说了，默认的copy construction 就是浅复制呀，干嘛不用默认的copy construction
+就完事了，搞那么多事干嘛。其实如果是浅复制，那么一个即将销毁的对象会释放ptr指向的
+内存，复制出来的对象又释放一次，那么重复释放了。所以怎么办呢。
+其实主要的原因的目前的 Type& operator = (const Type& rhs) 和 CopyCons(const Type&)中的
+参数都是const修饰的，不能改变参数的值。如果复制构造函数很复制操作符函数的参数不是const,
+那就可以把即将要销毁的Obj中的ptr = null ，就不会重复释放内存，而且提高了复制的效率，即将
+要销毁的Obj已经把有价值的东西转移(std::move)到另一个对象去了。所以对于一些临时变量右值引用
+是不错的解决办法。
+
+
+{% highlight ruby %}
+
+#include <iostream>
+#include <stdio.h>
+
+#include <utility>
+#include <vector>
+#include <string>
+
+class MemoryBlock
+{
+public:
+
+   // Simple constructor that initializes the resource.
+   explicit MemoryBlock(size_t length)
+      : _length(length)
+      , _data(new int[length])
+   {
+      std::cout << "In MemoryBlock(size_t). length = "<< _length << "." << std::endl;
+   }
+
+   // Destructor.
+   ~MemoryBlock()
+   {
+      std::cout << "In ~MemoryBlock(). length = "<< _length << ".";
+      if (_data != nullptr)
+      {
+         std::cout << " Deleting resource.";
+         delete[] _data;
+      }
+      std::cout << std::endl;
+   }
+
+   // Copy constructor.
+   MemoryBlock(const MemoryBlock& other)
+      : _length(other._length)
+      , _data(new int[other._length])
+   {
+      std::cout << "In MemoryBlock(const MemoryBlock&). length = "<< other._length << ". Copying resource." << std::endl;
+      std::copy(other._data, other._data + _length, _data);
+   }
+
+   // Copy assignment operator.
+   MemoryBlock& operator=(const MemoryBlock& other)
+   {
+      std::cout << "In operator=(const MemoryBlock&). length = "<< other._length << ". Copying resource." << std::endl;
+
+      if (this != &other)
+      {
+         delete[] _data;
+         _length = other._length;
+         _data = new int[_length];
+         std::copy(other._data, other._data + _length, _data);
+      }
+      return *this;
+   }
+
+   // Retrieves the length of the data resource.
+   size_t Length() const
+   {
+      return _length;
+   }
+
+   // Move constructor.
+    MemoryBlock(MemoryBlock&& other)
+       : _data(nullptr)
+       , _length(0)
+    {
+       std::cout << "In MemoryBlock(MemoryBlock&&). length = "<< other._length << ". Moving resource." << std::endl;
+       _data = other._data;
+       _length = other._length;
+       other._data = nullptr;
+       other._length = 0;
+    }
+
+    // Move assignment operator.
+    MemoryBlock& operator=(MemoryBlock&& other)
+    {
+       std::cout << "In operator=(MemoryBlock&&). length = "<< other._length << "." << std::endl;
+
+       if (this != &other)
+       {
+          delete[] _data;
+          _data = other._data;
+          _length = other._length;
+          other._data = nullptr;
+          other._length = 0;
+       }
+       return *this;
+    }
+
+private:
+   size_t _length; // The length of the resource.
+   int* _data; // The resource.
+};
+
+void TestSTLObject()
+{
+    std::string str = "Hello";
+    std::vector<std::string> v;
+
+    v.push_back(str);
+    std::cout << "After copy, str is \"" << str << "\"\n";
+
+    v.push_back(std::move(str));
+    std::cout << "After move, str is \"" << str << "\"\n";
+
+    std::cout << "The contents of the vector are \"" << v[0] << "\", \"" << v[1] << "\"\n";
+}
+
+void TestMyObjectWithoutUseMove()
+{
+   std::vector<MemoryBlock> v;
+   MemoryBlock mb1(25);
+   v.push_back(mb1);
+}
+
+void TestMyObjectWithUseMove()
+{
+   std::vector<MemoryBlock> v;
+   MemoryBlock mb1(25);
+   v.push_back(std::move(mb1));
+}
+
+int main(int argc, char const *argv[])
+{
+    TestMyObjectWithoutUseMove();
+    std::cout << "......................................." << std::endl;
+    TestMyObjectWithUseMove();
+    return 0;
+}
+
+{% endhighlight %}
