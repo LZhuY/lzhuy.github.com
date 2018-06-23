@@ -43,3 +43,137 @@ end
 local sid = router.route(ServerType.Hall, rid) --从已经被注册的列表中拿一个sid
 fm:hall(sid) --修改rpc.__from=sid
 fm:hall(sid).hall_notifyFriendOnlineStatus(myRid, online, rpctype.Types.array.build("int48", rids)) --
+
+
+--base.init, 每个节点mail接口里都有类型 base.init("Hall")
+function init(sname)
+    assert(sname)
+
+    local sty = ServerType[sname]
+    assert(sty)
+
+    math.randomseed(RealTime())
+
+    conf.ServerTypeName = sname
+    conf.ServerType = sty
+
+    if not conf.Release and conf.Cluster and conf.ClusterLog then
+        RemoteLog(true)
+    end
+    
+    setupServer(sname) --连接router db zookeeper等
+    rpcdef.implements("System", SystemImpl)
+
+    initGlobalEntity()
+    registerServer(sname) 
+end
+
+function setupServer(sname)
+    rpcdef.init(entitydef)
+    INFO("Rpc version:%d, client version: %d", rpcdef.Digi, rpcdef.ClientDigi)
+
+    rpcdef.setup(sname)
+    rpcstub.setup()
+
+    FID_SYSTEM_PING = rpcdef.rpcStaticServer.System.ping.id
+    FID_SYSTEM_PONG = rpcdef.rpcStaticClient.System.pong.id
+
+    server.init(sname)
+    router.init(sname)
+    DBProxy.init(sname)
+    rpcco.init()
+
+    if conf.ServerType ~= ServerType.Olap then
+        connect(sname)
+    end
+end
+
+function connect(sname) 
+    local sty = ServerType[sname]
+    if sty ~= ServerType.DB and sty ~= ServerType.Router then --如果是DB 或者 Router就不需要连接，如果不是就发出事件触发底层连接
+        EventMng:subscribe(Event.Server.Online, onRouterOnline)
+        EventMng:subscribe(Event.Server.Offline, onRouterOffline)
+    end
+
+    if conf.Cluster and conf.ZKAddr then
+        ZkMonitor.launch() --连接zookeeper
+        return
+    end
+
+    if conf.ServerType ~= ServerType.Router then
+        connectMQNet("Router")
+        connectMQNet("DB")
+    end
+end
+
+function launch()
+    if ZK then
+        ZK:destroy()
+        ZK = nil
+    end
+
+    assert(conf.ZKAddr)
+
+    ZooKeeper.setdebuglevel(0)
+
+    WGET_WATCHER = {}
+    if WSET_CO then
+        rpcco.stop(WSET_CO)
+        WSET_CO = nil
+    end
+
+    ZK = ZkClient()
+    local success = ZK:init(conf.ZKAddr, conf.ZKTimeout or 90000, global_watcher) --注册回调
+    assert(success, "ZkClient launch failed")
+
+    if conf.ZKAuth then
+        local rc = ZK:add_auth("digest", conf.ZKAuth, function(rc, str) LOG("Add auth rc %d, content %s", rc, tostring(str)) end)
+        assert(rc == 0)
+    end
+end
+
+local function global_watcher(ty, state, path) --回调
+    ZKLOG("Global watcher type: %d, %s, state: %d, %s, path: %s", ty, ZooKeeper.type2string(ty), state, ZooKeeper.state2string(state), tostring(path))
+
+    if ty ~= ZooKeeper.ZOO_SESSION_EVENT then
+        return
+    end
+
+    if state == ZooKeeper.ZOO_CONNECTED_STATE then
+        createLockNode() --这里最终调register，注册自己的信息到zookeeper
+    elseif state == ZooKeeper.ZOO_AUTH_FAILED_STATE then
+        ZKERROR("Auth failed to ZooKeeper")
+        Quit()
+    elseif state == ZooKeeper.ZOO_EXPIRED_SESSION_STATE then
+        server.onOffline(ServerID, nil, true)
+        launch()
+    end
+end
+
+function checkTypeNode()
+    ZK:aget_children(ServerDir, function(rc, strings)
+        if rc ~= ZooKeeper.ZOK then
+            ERROR("Get children failed rc: %d, content: %s", rc, ZooKeeper.rc2string(rc))
+            scheduleRetry()
+            return
+        end
+
+        local cur = {}
+        for k, v in ipairs(strings) do
+            cur[v] = true
+        end
+
+        local miss = {}
+        for k, v in pairs(ServerType) do
+            if not cur[k] then
+                miss[k] = true
+            end
+        end
+
+        if table.isempty(miss) then
+            setupWatcher() --监听zookeeper节点变化，更新信息到底层ring
+        else
+end
+
+base.init("sname")接口中，完成net connect和 zookeeper register。并监听zookeeper节点变化(setupWatcher接口)。有接口变化更新到底层ring。
+其他节点起服的时候主动连接到router和DB节点。节点间通信由router完成。
