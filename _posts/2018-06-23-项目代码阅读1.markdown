@@ -1,0 +1,45 @@
+module "base"
+
+function initGlobalEntity()
+    local createGlobalEntity=function(classname, eid)
+        local m = Global[classname]
+        if m == nil then return nil end
+        
+        local new = m.new
+        if not new then
+            declareObject(m, Entity)
+            new = m.new
+        end
+        
+        LOG("create global entity [%s, %d]", classname, eid)
+        local entity = new(conf.GlobalID, 0, eid)
+        if not entity.mailbox then
+            entity.mailbox = rpcstub.mailbox(rpcdef.rpcGlobal[classname], conf.GlobalID, eid)
+        end
+
+        entity.global = entity.mailbox
+
+        for k, v in pairs(ServerType) do
+            local sname = string.lower(k)
+            local ghost = string.format("__%sghost", sname)
+            entity[ghost] = rpcstub.mailbox(rpcdef["rpc"..k][classname], 0, eid) --返回rpc,rpc接口是rpcdef中定义的接口
+
+            entity[sname] = function(self, sid)
+                local m = rawget(self, ghost)
+                m.__from = sid
+                return m
+            end
+        end
+
+        return entity --fm:hall(sid)拿到的对象
+    end
+
+    for k,v in pairs(rpcdef.GlobalEntity) do
+        local e = createGlobalEntity(k,v)
+        if e ~= nil then Entity.set(v, e) end
+    end
+end
+
+local sid = router.route(ServerType.Hall, rid) --从已经被注册的列表中拿一个sid
+fm:hall(sid) --修改rpc.__from=sid
+fm:hall(sid).hall_notifyFriendOnlineStatus(myRid, online, rpctype.Types.array.build("int48", rids)) --
