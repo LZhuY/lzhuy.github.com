@@ -1,4 +1,47 @@
+---
+layout: post
+title:  "项目代码整体架构"
+date:   2018-06-25 22:21:49
+categories: distributed_system
+tags: distributed_system
+---
+
+{% highlight ruby %}
 module "base"
+
+function callRpc(from, fid, eid, flag, coid, ar) ///LuaRpc::callSelf(flag, *head, buf); 
+    if flag == RPC_FLAG_CO_RESPONSE then ///如果是返回的数据，直接resume本地协程
+        begin_call_rpc()
+        coresume(coid, fid, ar)
+        end_call_rpc()
+        return
+    end
+
+    local rf = getFuncByFid(fid)
+    if not rf then
+        error(sformat("Can't find function #%d from %d", fid, from))
+    end
+
+    local entity, incomplete = wrapEntity(rf, from, eid, flag, coid)
+    if not entity then 
+        local sm = Entity.get("ServerManager")
+        if not sm:forwardmsg(from, fid, eid, flag, coid, ar) then
+            ERROR("Can't find entity #%d, func: %s", eid, rf.name)
+        end
+        return
+    end
+
+    if incomplete then
+        if not entity:cachemsg(from, fid, eid, flag, coid, ar) then
+            ERROR("Can't find constructed entity #%d, func: %s", eid, rf.name)
+        end
+        return
+    end
+
+    begin_call_rpc()
+    rpcinvoke(entity, rf, ar) ///触发本节点的接口，这里会在协程中调本节点接口，返回的结果调CallRpc返回结果
+    end_call_rpc()
+end
 
 function initGlobalEntity()
     local createGlobalEntity=function(classname, eid)
@@ -174,6 +217,9 @@ function checkTypeNode()
             setupWatcher() --监听zookeeper节点变化，更新信息到底层ring
         else
 end
+{% endhighlight %}
 
 base.init("sname")接口中，完成net connect和 zookeeper register。并监听zookeeper节点变化(setupWatcher接口)。有接口变化更新到底层ring。
 其他节点起服的时候主动连接到router和DB节点。节点间通信由router完成。
+
+
