@@ -1,0 +1,37 @@
+---
+layout: post
+title:  "一些分布式的理解"
+date:   2018-07-19 10:08:00
+categories: distributed_system
+tags: distributed_system
+---
+
+1、split brain
+一个分布式节点集合可能因为各种原因，被分裂成两个或多个小集合，每个小集合不能与其他集合通信。
+这就是脑裂现象。虽然小集合还可以继续提供服务，不过容易造成整个系统数据和状态不一致的现象。
+所以要根据大多数原则，防止脑裂现象造成的系统不一致。
+比如系统有5个节点，被分成3、2两个小集合。那么只有节点数大于等于5的大多数的集合可以继续提供服务。
+只有2个节点的集合将会失效。
+
+2、leader和follower之间的合作
+snode receive operator with is read only then follower dealwith that operator， else follower send that operator
+to leader。the exit of the leader is to sequence the change state operator。makesure each follower Exce the same 
+order。
+
+3、fastleaderelection
+1、选票包括两个部分(sid,zxid),分别表示节点ID和最后一次处理的事务ID，选择的规则是sid1的条件是 zxid1>zxid2 or (sid1>sid2 and zxid1==zxid2)
+2、每个节点都向其他节点推荐自己。收到选票的节点根据（1）中的规则判断接受那个选票，如果新的选票更好，这用新的选票覆盖自己的选票，然后广播
+自己选择的新选票。
+3、节点收到其他节点（其他节点，不能包括自己在内，否则会出问题）选择自己的回复数量大于quorum则变成leader，并通知其他节点这个结果，其他节点
+则自动变成follower，如果发起投票的节点没有收到被投节点的肯定回复，则会在超时后重新发起一轮投票。
+
+4、Zab(zookeeper atomic broadcast protocol)
+1、节点收到客户端的写请求后，如果自己是master，则开始处理流程，如果不是master则把请求转发给master
+2、master如果处理写请求呢，使用zab协议进行。zab类型二段提交协议
+	（1）先广播一个propose，等到quorum数量得follower节点回复后进入第二步
+	（2）广播excuse指令，收到指令的follower节点开始执行事务
+
+questions 
+
+1、如何动态添加节点，各个节点如何知道当前系统中总共有多少个节点。只有知道一共有多少个节点才能
+选举leader和防止split brain的出现。
