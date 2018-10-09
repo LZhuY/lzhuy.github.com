@@ -9,3 +9,12 @@ tags: distributed_system
 想要拯救这个世界，我们需要做两件事情：
 一，如何在任何地点连接任何两个应用程序；
 二、将这个解决方案用最为简单的方式包装起来，供程序员使用。
+
+创建和销毁套接字：zmq_socket(), zmq_close()
+配置和读取套接字选项：zmq_setsockopt(), zmq_getsockopt()
+为套接字建立连接：zmq_bind(), zmq_connect()
+发送和接收消息：zmq_send(), zmq_recv()
+
+zmq_msg_t mouse;
+zmq_msg_init (&mouse);
+zmq_msg_close (&mouse);
