@@ -1,0 +1,36 @@
+---
+layout: post
+title:  "进程间通信"
+date:   2016-11-01 11:26:00
+categories: network
+tags: network
+---
+
+动态规划算法常见题型和总结
+
+一、解题思路
+动态规划算法总体来说就是要找到小的解构成大解的公式。
+dp[i] = max(dp[i-1], dp[i-2])
+
+二、leetcode题型
+
+![image1](/assets/img/ag/g1.png)
+
+![image2](/assets/img/ag/g2.png)
+
+32、
+    给定一个只包含 '(' 和 ')' 的字符串，找出最长的包含有效括号的子串的长度。
+
+![image3](/assets/img/ag/g3.png)
+
+53、最大子序和
+62、机器人在二维地图上行走，只能向下或者向右走一步。问从(0,0)走到(m,n)一共有几种走法。
+dp[i][j] = dp[i-1][j]+dp[i][j-1]
+
+139、单词拆分
+
+![image4](/assets/img/ag/g4.png)
+
+123、买卖股票II
+![image5](/assets/img/ag/g5.png)
+![image6](/assets/img/ag/g6.png)

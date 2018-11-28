@@ -11,11 +11,11 @@ pthread_mutex_t用于保护临界区，pthread_cond_t用于通知线程唤醒线
 pthread_mutexattr_setpshared(pthread_mutexattr*, int val)//设置PTHREAD_PROCESS_SHARED后可以用在进程同步。
 1、线程使用互斥锁和条件变
 
-![image10](/assets/img/network/mutex_1.png)
+![image1](/assets/img/network/mutex_1.png)
 
-![image10](/assets/img/network/mutex_2.png)
+![image2](/assets/img/network/mutex_2.png)
 
-![image10](/assets/img/network/mutex_3.png)
+![image3](/assets/img/network/mutex_3.png)
 
 2、读写锁
 pthread_rwlock_init(pthread_rwlock_t*, pthread_rwlockattr_t*);//初始化接口，或者使用PTHREAD_RWLOCK_INITIALIZER赋值。
@@ -36,7 +36,7 @@ struct flock{
      short l_pid;/*PID return by G_GETLK*/
 }
 
-![image10](/assets/img/network/mutex_4.png)
+![image4](/assets/img/network/mutex_4.png)
 
 4、信号量
 有名信号量,跟随内核存在。
