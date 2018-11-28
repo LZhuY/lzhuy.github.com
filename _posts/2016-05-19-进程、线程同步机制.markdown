@@ -1,0 +1,56 @@
+---
+layout: post
+title:  "进程、线程同步"
+date:   2016-05-19 22:21:49
+categories: network
+tags: network
+---
+
+一、互斥锁和条件变量（pthread_mutex_t, pthread_cond_t）
+pthread_mutex_t用于保护临界区，pthread_cond_t用于通知线程唤醒线程。如果mutex是在共享内存中申请创建的，那么在使用
+pthread_mutexattr_setpshared(pthread_mutexattr*, int val)//设置PTHREAD_PROCESS_SHARED后可以用在进程同步。
+1、线程使用互斥锁和条件变
+
+![image10](/assets/img/network/mutex_1.png)
+
+![image10](/assets/img/network/mutex_2.png)
+
+![image10](/assets/img/network/mutex_3.png)
+
+2、读写锁
+pthread_rwlock_init(pthread_rwlock_t*, pthread_rwlockattr_t*);//初始化接口，或者使用PTHREAD_RWLOCK_INITIALIZER赋值。
+int pthread_rwlock_rdlock(pthread_rwlock_t*);//获取读锁，成功返回0
+int pthread_rwlock_wrlock(pthread_rwlock_t*);//获取写锁，成功返回0
+int pthread_rwlock_unlock(pthread_rwlock_t*);
+pthread_rwlock_destroy(pthread_rwlock_t*);
+
+
+3、文件锁
+fcntl(int fd, int cmd, struct flock* arg);
+cmd : F_SETLK、F_SETLKW、F_GETLK
+struct flock{
+     short l_type;/*F_RDLCK、F_WRLCK、F_UNLCK*/
+     short l_whence; /*SEEK_SET、SEEK_CUR、SEEK_END*/
+     short l_start;/*relative staring offset in bytes*/
+     short l_len;/*bytes*/
+     short l_pid;/*PID return by G_GETLK*/
+}
+
+![image10](/assets/img/network/mutex_4.png)
+
+4、信号量
+有名信号量,跟随内核存在。
+sem_t* sem_open(char*, unsigned int flag, mode_t mode, int val);
+sem_wait(sem_t*);
+sem_post(sem_t*);
+sem_close(sem_t*);
+sem_unlink(sem_t*);
+
+内存信号量
+sem_init(sem_t*, int pshare, unsigned int val); /*pshare==0线程信号，pshare>0进程信号*/
+sem_wait(sem_t*);
+sem_post(sem_t*);
+sem_destroy(sem_t*);
+
+![image10](/assets/img/network/mutex_5.png)
+![image10](/assets/img/network/mutex_6.png)
