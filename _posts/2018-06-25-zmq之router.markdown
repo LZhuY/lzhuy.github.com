@@ -7,7 +7,7 @@ tags: distributed_system
 ---
 
 
-[image09](/assets/img/zmq_router_1.png)
+![image09](/assets/img/zmq_router_1.png)
 
 1、identity 为 aaa 的 socket 发送了一个消息，这个消息由两部分组成，一个是目的 socket的identity，名字为bbb，另一个是真正的消息，就是"hello"。
 

@@ -1,0 +1,9 @@
+---
+layout: post
+title:  "c++对象模型"
+date:   2016-03-18 22:21:49
+categories: cplusplus
+tags: cplusplush
+---
+
+![image10](/assets/img/insc_0.png)

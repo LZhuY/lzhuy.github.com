@@ -1,0 +1,285 @@
+---
+layout: post
+title:  "STL常用容器接口和源码分析"
+date:   2017-02-19 11:26:00
+categories: cplusplush
+tags: cplusplush
+---
+
+一、vector
+
+1、construction
+       //1、empty
+       std::vector<int> vec_empty;
+       //2、fill constructor(cnt, val)
+       std::vector<int> vec_fill(10, 1024); //10个1024
+       //3、range  [first,last)
+       int arr[10] = { 0, 1, 2, 3, 4, 5 };
+       std::vector<int> vec_range_1(arr, arr + 5);
+       std::vector<int> vec_range_2(vec_range_1.begin(), vec_range_1.end());
+       //4、copy construction
+       std::vector<int> vec_copy(vec_range_1);
+
+2、iterator
+       std::vector<int>::iterator iter_begin = vec_copy.begin();
+       std::vector<int>::iterator iter_end = vec_copy.end();
+       std::vector<int>::reverse_iterator iter_rbegin = vec_copy.rbegin();
+       std::vector<int>::reverse_iterator iter_rend = vec_copy.rend();
+       for (iter_rbegin; iter_rbegin != iter_rend; iter_rbegin++)//reverse iterator ++ 是向左侧走的
+              std::cout << *iter_rbegin << std::endl;//4 3 2 1 0
+       //不能通过const iterator修改元素
+       std::vector<int>::const_iterator cbegin = vec_copy.cbegin(); //*cbegin = 10; //编辑报错
+       std::vector<int>::const_reverse_iterator crbegin = vec_copy.crbegin();
+
+3、capacity
+       bool isEmpty = vec_fill.empty();
+       size_t sz = vec_fill.size();//当前vector里面的元素数量
+       size_t msz = vec_fill.max_size();//vector理论上能容纳的元素数量，不过具体需要根据系统资源等决定。vector不保证能容纳这么多。
+       size_t vec_capacity = vec_fill.capacity();//10 //Returns the size of the storage space currently allocated for the vector
+       vec_fill.resize(1024*1024, 1024);//capacity >=1024*1024 (sz,val)设置vector当前元素数量，可能会发生数据的裁剪或者insert(如果给了val参数，新元素为val，否则就最后一个元素的值)。
+       vec_fill.resize(10);//capacity >=1024*1024
+       vec_fill.reserve(vec_fill.size());//capacity >= 1024*1024 重新申请开辟内存，如果给的N小于capacity则不发生任何变化，如果大于capacity则申请足够的内存。
+       vec_fill.shrink_to_fit();//capacity==10 Requests the container to reduce its capacity to fit its size. 顺哥
+
+4、access element
+       vec_fill[0] = 10;//operator[]
+       vec_fill[1024] = 1;
+       int& ati = vec_fill.at(1);//返回引用，可以通过引用修改值
+       int& bi = vec_fill.back();//返回最后元素引用
+       int& fi = vec_fill.front();//返回第一个元素引用
+       int* ptr = vec_fill.data();//返回存元素的地址开始位置 forget 2018.11.25
+       *ptr = 1024;
+       *(ptr + 1) = 1025;
+5、modifiers
+       //assign (first, second) (arr, arr+off) (sz, val) ({1,2,3})
+       vec_empty.assign(vec_copy.begin(), vec_copy.end()); //[first,last)，跟copy差不多vec_empty原来的元素全部删掉，然后用区间中的数据填充。
+       vec_fill.assign(vec_copy.begin(), vec_copy.end());//如果原来capacity大于区间中的元素，capacity不变。
+       vec_empty.assign(arr, arr + 10); //数组也是OK的
+       vec_empty.assign({1,2,3,4,5}); //initializer list (i'niʃəlaizə)
+       vec_empty.assign(9, 1024); // (sz, val) is ok 9个1024
+       vec_fill.push_back(10);
+       vec_fill.pop_back();//return void
+       vec_fill.insert(vec_fill.begin(), 10);//(where, val)
+       vec_fill.insert(vec_fill.begin(), vec_empty.begin(), vec_empty.end());//(where, first, second)
+       vec_fill.insert(vec_fill.end(), arr, arr + 10);//(where , arr, arr+off)
+       vec_fill.insert(vec_fill.begin(), {1,2,3});//(where, initizlier list) initizlier list is ok
+       vec_fill.insert(vec_fill.begin(), 10, 1024);//(where, sz, val)
+       vec_fill.erase(vec_fill.begin());//(pos)
+       vec_fill.erase(vec_fill.begin(), vec_fill.begin() + 10);//[first,last)
+       vec_fill.swap(vec_empty);//交换两个vector的内容，capacity也互相交换，感觉是浅复制
+       vec_fill.clear();//清空vector的元素，capacity不变。capacity不会主动变小，除非主动调shrink_to_fit forget 2018.11.25
+       vec_fill.emplace(vec_fill.begin(), 10);//(where, args...) 使用给的参数构造一个对象并放到where位置 forget 2018.11.25
+       vec_fill.emplace_back(10);//(args) 使用args构造对象，放到队尾。 forget 2018.11.25
+
+二、map
+
+1、construction
+       std::map<int, int> empty_map;//empty
+       std::map<int, int> initializer_map({ {1,2},{2,3} });//initialier list
+       std::map<int, int> copy_map(initializer_map);//copy
+       std::map<int, int> range_map(copy_map.begin(), copy_map.end());//[first, second)
+
+2、iterator
+       //iterator
+       //跟vector一样
+       /*
+              begin end
+              rbegin rend
+              cbegin cend
+              crbegin crend
+       */
+3、capacity
+       size_t sz = range_map.size();
+       size_t msz = range_map.max_size();
+       bool is_map_empty = range_map.empty(); //forget 2018.11.25
+
+4、element access
+       int element_map = range_map[1];//如果没有KEY==1的元素，将创建一个val为默认值，KEY==1的元素
+       int& ref_element = range_map.at(1);//返回KEY==1的val引用
+       ref_element = 1024;
+
+5、modifiers
+       //已经存在的key，insert、emplace之类的是不会成功的。就是不能改掉key对应的val
+       std::pair<std::map<const int,int>::iterator, bool> map_insert_res = range_map.insert(std::pair<int, int>(10,10));//insert pair。注意看返回值类型
+       range_map.insert(copy_map.begin(), copy_map.end());//range
+       std::map<int,int>::iterator map_insert_res1 = range_map.insert(range_map.begin(), std::pair<int,int>(11,11));//(pos, val) position参数只是起到一个辅助作用，如果需要插入的值位置刚好是position位置之后，则能优化插入时间。
+       range_map.insert({ {0,0},{0,10} });//initializer list
+       range_map.erase(10);//key
+       range_map.erase(range_map.begin());//iterator
+       range_map.erase(range_map.begin(), range_map.find(10));//range
+       range_map.swap(copy_map);//swap
+       range_map.clear();//clear
+       map_insert_res = range_map.emplace(10, 13);//emplace
+       range_map.emplace_hint(range_map.begin(), 10, 11);
+6、operations
+       std::map<int, int>::iterator map_iter = range_map.find(10);//返回KEY对应的iterator，如果没有返回end
+       size_t count_map = range_map.count(10);//1 or 0 //forget 2018.11.25
+       std::map<int, int> sort_map({ {0,0},{1,1},{2,2},{3,3},{4,4} });
+       auto lower_b = sort_map.lower_bound(1);//小于等于1的最小iterator 1
+       auto upper_b = sort_map.upper_bound(2);//大于2的最小itera不包括2 3 
+       sort_map.erase(lower_b, upper_b);//0,3,4 这两个接口配合使用能删除[left,right]范围里面的元素
+三、deque (dek)
+
+deque的数据结构：
+map是一块连续的内存空间，里面放的是指针，指针指向大小固定的内存块。iterator有四个主要成员。cur指向memory中当前位置，first指向memory中开始位置，last指向memory中结束位置。node指向map中的当前指针。
+
+4、modifiers
+push_back()
+push_front()
+pop_back()
+pop_front()
+
+{% highlight ruby %}
+#ifndef DEQ_H
+#define DEQ_H
+
+const unsigned int BuffSize = 8;
+const unsigned int MapSize = 8;
+
+template<typename T> class Deque;
+
+template<typename T>
+class Iterator {
+private:
+	T* _cur;
+	T* _first;
+	T* _last;
+	T** _node;
+public:
+	friend class Deque<T>;
+	Iterator(){}
+	Iterator(Iterator<T>& org):_first(org._first), _last(org._last), _cur(org._cur), _node(org._node) {}
+	Iterator(T* first, T* last, T* cur, T** node):_first(first),_last(last),_cur(cur), _node(node){}
+	T* operator->() {
+		return _cur;
+	}
+	T& operator *() {
+		return *_cur;
+	}
+	Iterator<T>& operator++(int) {
+		if (_cur == _last-1) {
+			_node++;
+			_first = *_node;
+			_last = _first + BuffSize;
+			_cur = _first;
+		}
+		else {
+			_cur++;
+		}
+		return *this;
+	}
+
+	Iterator<T>& operator--(int) {
+		if (_cur != _first) {
+			_cur--;
+		}
+		else {
+			_node--;
+			_first = *_node;
+			_last = _first+BuffSize;
+			_cur = _last - 1;
+		}
+		return *this;
+	}
+
+	Iterator<T> operator+(int n) {
+		if (_last > _cur + n) {
+			return *this;
+		}
+		int left = _last - _cur - 1;
+		int bsz = (n-left) / BuffSize + 1;
+		int msz = (n - left) % BuffSize - 1;
+		T** node = _node + bsz;
+		T* first = *(node);
+		T* cur = first+msz;
+		T* last = first + BuffSize;
+		return Iterator<T>(first, last, cur, node);
+	}
+
+	bool operator != (const Iterator& rhs) {
+		return _node != rhs._node || _cur != rhs._cur;
+	}
+
+	Iterator<T> operator = (Iterator<int>& rhs) {
+		_node = rhs._node;
+		_first = rhs._first;
+		_last = rhs._last;
+		_cur = rhs._cur;
+		return *this;
+	}
+};
+
+template<typename T>
+class Deque {
+private:
+	Iterator<T> _start;
+	Iterator<T> _finish;
+	T**      _map;
+	size_t   mapSize;
+	size_t   itemCnt;
+public:
+	Deque() {
+		_map = (T**)malloc(sizeof(T**)*MapSize);
+		for (int i = 0; i < MapSize; i++) {
+			*(_map + i) = (T*)malloc(sizeof(T)*BuffSize);
+		}
+		_start._node = _map + MapSize / 2;
+		_start._first = *(_start._node);
+		_start._cur = _start._first + BuffSize / 2;
+		_start._last = _start._first + BuffSize;
+
+		_finish._node = _map + MapSize / 2;
+		_finish._first = *(_finish._node);
+		_finish._cur = _finish._first + BuffSize / 2;
+		_finish._last = _finish._first + BuffSize;
+		mapSize = MapSize;
+		itemCnt = 0;
+	}
+	bool push_back(T& t) {
+		*_finish = t;
+		_finish++;
+		return true;
+	}
+	bool push_front(T& t) {
+		*_start = t;
+		_start--;
+		return true;
+	}
+	Iterator<T> begin() {
+		return _start;
+	}
+	Iterator<T> end() {
+		return _finish;
+	}
+	Iterator<int>& erase(Iterator<T>& pos) {
+		Iterator<T> begin = pos;
+		while (begin != _finish) {
+			*begin = *(begin+1);
+			begin++;
+		}
+		_finish--;
+		return _finish;
+	}
+};
+#endif 
+{% endhighlight %}
+
+四、queue (kju)
+
+queue没有提供遍历用的iterator，因为queue是队列只提供 队尾插入，队头pop的操作。
+1、construction
+       std::queue<int> empty_queue; //empty
+       std::queue<int> initializer_queue({1,2,3});//initializer list
+       std::queue<int> cnt_queue(initializer_queue);//copy
+2、operations
+       empty_queue.push(10);
+       empty_queue.pop();
+       empty_queue.front();
+       empty_queue.back();
+       empty_queue.emplace(10);
+       empty_queue.swap(initializer_queue);
+       empty_queue.empty();
+       empty_queue.size();
+
+五、stack
+

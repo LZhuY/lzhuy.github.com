@@ -38,38 +38,31 @@ class SkipList{
 		Node* findGreaterOrEqul(Key&, Node**);
 		int isAfter(Key&, Node*);
 };
-
 template<typename Key, class Compare>
 struct SkipList<Key, Compare>::Node{
 	Key key_;
 	int level_;
 	Node** next_;
-
 	Node(Key key, int level):key_(key),level_(level){
 		next_ = new Node*[level];
 	}
-
 	Node* next(int level){
 		if(level >= level_) return NULL;
 		return next_[level];
 	}
-
 	Node* setNext(int level, Node* n){
 		next_[level] = n;
 	}
 };
-
 template<typename Key, class Compare>
 int SkipList<Key, Compare>::isAfter(Key& key, Node* n){
 	int r = comp_(key, n->key_);
 	return r;
 }
-
 template<typename Key, class Compare>
 SkipList<Key, Compare>::SkipList(Compare comp):maxLevel_(0),comp_(comp){
 	head_ = new Node(0, MAX_LEVEL);
 }
-
 template<typename Key, class Compare>
 typename SkipList<Key, Compare>::Node* SkipList<Key, Compare>::findGreaterOrEqul(Key& key, Node** n){
 	Node* x = head_;
@@ -90,7 +83,6 @@ template<typename Key, class Compare>
 void SkipList<Key, Compare>::Insert(Key& key){
 	Node** node = new Node*[MAX_LEVEL];
 	FindGreaterOrEquel(key, node);
-
 	int hight = randHight();
 	Node* newNode = new Node(key, hight);
 	for(int i=0;i<hight;i++)

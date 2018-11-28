@@ -1,0 +1,161 @@
+---
+layout: post
+title:  "进程间通信"
+date:   2016-11-01 11:26:00
+categories: network
+tags: network
+---
+
+进程间通信通常包括三部分的内容，消息传递(管道、消息队列、网络通信socket)、同步（各种锁、信号量等）、内存共享。其中这些机制又分为两大类。
+system V 和 posix两大标准，主要学习posix标准即可。
+
+一、消息传递
+1、管道(pipe 读 pai)
+管道没有名字或者标识符，所以只能在有共同祖先进程之间使用，fork之后创建的子进程可以继承父进程的文件描述符，所以可以在亲属进程之间使用。
+分为单工和双工两种类型，根据不同系统而定。其中 fd[1]用于写（1像一只笔，用于写），fd[0]用于读。
+
+2、管道没有名字或者标识符，只能在共同祖先的进程中使用，FIFO有名字与之关联，是一个单向的数据流，也称作有名管道。通过mkfifo创建FIFO后，使用open接口打开FIFO进度读或者写的操作。FIFO也是半工的，只能open(O_REONLY or O_WRONLY)。
+
+
+3、消息队列
+     mqd_t mq_open(const char* name, int flags,mode_t mode, struct mq_attr* attr) 创建消息队列,返回消息队列句柄
+     flags O_CREAT O_EXCL O_RDONLY O_WRONLY O_RDWR O_NONBLOCK
+     mode S_IRUSR S_IWUSR S_IRGRP S_IWGRP S_IROTH S_IWOTH
+     struct mq_attr{
+            long mq_flags; //0 or NONBLOCK
+            long mq_maxmsg; //最大消息数量
+            long mq_msgsize; //最大消息大小
+            long mq_curmsgs;//当前消息个数
+    }
+     这个接口的attr参数非常重要，如果使用NULL默认参数的话，因为不符合默认参数的范围会有些莫名其妙的错误。比如mq_receive参数的len没有mq_msgsize大的时候会收不到消息。默认的参数在 /proc/sys/fs/mqueue目录下。
+
+int mq_close(mqd_t mq); //只是对应的进程关闭，没有从内核中删除。
+int mq_unlink(const char* name); //从系统中删除消息队列。
+
+int mq_send(mqd_t mq, const char* ptr, size_t len, unsigned int prio);
+int mq_receive(mqd_t mq, char* ptr, size_t len, unsigned int* prio); //注意这里的len是指ptr指向空间的大小，如果这个值小于 mq_msgsize则收不到消息。
+
+int mq_getattr(mqd_t mq, struct mq_attr* attr);
+int mq_setattr(mqd_t mq, struct mq_attr* attr, struct mq_attr* gattr); //取当前队列的属性放到gattr中。用attr中的属性设置消息队列属性。只能设置mq_flags，其他属性在创建消息队列时确定后不能修改了。
+
+int mq_notify(mqd _t mq, const struct sigevent* notification); //队列从空到有消息发出信号，然后由信号的处理函数处理，或者创建新线程。
+union sigval{//如果sigev_notify==SIGEV_THREAD，则创建新线程，以sigev_notify_function为启动函数，以sigval为参数。
+     int sival_int;//
+     void* sival_ptr;//
+}
+struct sigevent{
+     int sigev_notify;// SIGEV_NONE, SIGEV_THREAD, SIGEV_SIGNAL,分别表示无作为，创建新线程，信号通知
+     int sigev_signo;// 发出的信号
+     union sigval; //新线程参数
+     void (*sigev_notify_function)(union sigval);
+     pthread_attr_t *sigev_notify_attributes;//新线程属性
+}
+/**********mq例子*********/
+extern "C"{
+    #include <stdlib.h>
+    #include <stdio.h>
+    #include <string.h>
+    #include <mqueue.h>
+    #include <fcntl.h>
+    #include <sys/stat.h>
+    #include <unistd.h>
+    #include <sys/wait.h>
+    #include <signal.h>
+}
+struct sigevent ev;
+const char* msg = "msgxx";
+static int haveMsg=0;
+static int LOOP = 1;
+const int maxBuffSize = 1024;
+const char* mqName = "/temp.13";
+const unsigned int flag = O_RDWR|O_CREAT|O_EXCL|O_NONBLOCK;
+const unsigned int mode = S_IWUSR|S_IRUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH;
+char buff[maxBuffSize];
+void sigHandler(int signo){
+    printf("%s\n", "sigHandler");
+    haveMsg = 1;
+}
+void mqWait(){
+    int n;
+    static int cnt=0;
+    mqd_t mq = mq_open(mqName, O_RDWR|O_NONBLOCK);
+    while(LOOP){
+        if(haveMsg == 0){
+            sleep(1);
+            continue;    
+        }
+        while( (n = mq_receive(mq, buff, maxBuffSize*8, NULL))  > 0 ){
+            cnt++;
+            printf("mqWait receive msg %s %d\n", buff, cnt);
+            if(cnt == 4) LOOP = 0;
+        }
+        haveMsg = 0;
+        mq_notify(mq, &ev);
+    }
+}
+void mqSend(const char* msg){
+    //snprintf(buff, maxBuffSize, "%s %d", msg, getpid());
+    mqd_t mq = mq_open(mqName, O_RDWR);
+    if(mq == -1){
+        printf("%s\n", "mqSend mq_open error");
+        return;
+    }
+    int rc = mq_send(mq, msg, strlen(msg), 0);
+    printf("send rc=%d\n", rc);
+    mq_close(mq);
+}
+void mqReciv(){
+    mqd_t mq = mq_open(mqName, O_RDONLY);
+    if(mq == -1){
+        printf("%s\n", "mqReciv mq_open error");
+        return;
+    }
+    unsigned int prio;
+    int rc = mq_receive(mq, buff, maxBuffSize*16, &prio);
+    printf("mqReciv msg %s %d\n", buff, rc);
+    mq_close(mq);
+}
+int main(int argc, char** argv){
+    ev.sigev_signo = SIGUSR1;
+    ev.sigev_notify = SIGEV_SIGNAL;
+    struct mq_attr attr;
+    attr.mq_maxmsg = 8;
+    attr.mq_msgsize = 8;
+    attr.mq_flags = O_NONBLOCK;
+    mqd_t mq = mq_open(mqName, flag, mode, NULL);
+    if(mq == -1){
+        printf("%s\n", "main mq_open error");
+        return -1;
+    }
+    pid_t pid = fork();
+    if(pid == 0){
+        mqSend(msg);
+        mq_getattr(mq, &attr);
+        printf("cursize %ld\n", attr.mq_curmsgs);
+        exit(0);
+    }
+    sleep(2);
+    pid_t pid2 = fork();
+    if(pid2 == 0){
+        mqReciv();
+        exit(0);
+    }
+    sleep(1);
+    signal(SIGUSR1, sigHandler);//注册信号处理函数
+    mq_notify(mq, &ev);//队列从空到有时，发出SIGUSR1信号
+    pid_t pid3 = fork();
+    if(pid3 == 0){
+        sleep(2);
+        mq_send(mq, msg, strlen(msg), 0);
+        mq_send(mq, msg, strlen(msg), 0);
+        sleep(1);
+        mq_send(mq, msg, strlen(msg), 0);
+        mq_send(mq, msg, strlen(msg), 0);
+        exit(0);
+    }
+    mqWait();//当然这个函数应该处理得更好一点，不能用sleep，可以用select或者epoll，在信号处理函数里面write，触发select or epoll返回。
+    mq_close(mq);
+    waitpid(pid, NULL, 0);
+    waitpid(pid2, NULL, 0);
+    return 0;
+}
