@@ -1,9 +1,9 @@
 ---
 layout: post
-title:  "进程间通信"
-date:   2016-11-01 11:26:00
-categories: network
-tags: network
+title:  "动态规划算法"
+date:   2016-09-12 11:26:00
+categories: algorithm
+tags: algorithm
 ---
 
 动态规划算法常见题型和总结
