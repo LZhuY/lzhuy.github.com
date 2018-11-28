@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "c++ define&declaration&init"
-date:   2018-05-18 22:21:49
+date:   2016-05-18 22:21:49
 categories: cplusplus
 tags: cplusplush
 ---

@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "SkipList"
-date:   2018-05-16 22:21:49
+date:   2017-05-16 22:21:49
 categories: data_structure
 tags: data_structure
 ---

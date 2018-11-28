@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "c++11 function"
-date:   2018-06-09 22:21:49
+date:   2016-06-09 22:21:49
 categories: cplusplus
 tags: cplusplus
 ---
